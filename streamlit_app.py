@@ -98,16 +98,23 @@ else:
 
         if st.button("💾 Finish Saving Playlist"):
             try:
-                res = requests.post(f"{BACKEND_URL}/create_playlist", json={
-                    "emotion": st.session_state["top_emotion"],
-                    "track_uris": st.session_state["track_uris"]
-                })
+                res = requests.post(
+                    f"{BACKEND_URL}/create_playlist",
+                    json={
+                        "emotion": st.session_state["top_emotion"],
+                        "track_uris": st.session_state["track_uris"]
+                    },
+                    timeout=15
+                )
 
                 if res.status_code == 200:
-                    playlist_url = res.json().get("url", "")
+                    playlist_url = res.json().get("url")
                     st.success("✅ Playlist created successfully!")
                     st.markdown(f"[🎧 Open Your Playlist Here]({playlist_url})")
                 else:
-                    st.error("Failed to create playlist.")
+                    error_detail = res.json().get("error", "No error info")
+                    st.error(f"❌ Failed to create playlist: {error_detail}")
             except Exception as e:
-                st.error(f"Something went wrong: {e}")
+                st.error(f"Something went wrong: {str(e)}")
+
+
