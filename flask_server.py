@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)  # Allow CORS for cross-origin Streamlit
+CORS(app)
 
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
@@ -19,14 +19,14 @@ auth_manager = SpotifyOAuth(
     client_id=SPOTIFY_CLIENT_ID,
     client_secret=SPOTIFY_CLIENT_SECRET,
     redirect_uri=SPOTIFY_REDIRECT_URI,
-    scope="playlist-modify-public",
-    cache_path=".cache-web",  # stores user token
+    scope="playlist-modify-public playlist-modify-private",
+    cache_path=".cache-web",
     show_dialog=True
 )
 
 @app.route("/")
 def home():
-    return "🎵 Flask server is running and ready to handle Spotify redirects!"
+    return "🎵 Flask server is running!"
 
 @app.route("/login")
 def login():
@@ -38,32 +38,36 @@ def callback():
     code = request.args.get("code")
     token_info = auth_manager.get_access_token(code, as_dict=True)
 
-    # Save access token to file for simplicity (not for production)
+    if not token_info:
+        return "❌ Failed to get token."
+
     with open("access_token.json", "w") as f:
         json.dump(token_info, f)
 
-    return """
-    ✅ Authorization complete. You can close this tab and return to the app.
-    """
+    return "✅ Authorization complete. You can close this tab."
 
 @app.route("/create_playlist", methods=["POST"])
 def create_playlist():
     try:
-        # Load access token from file
         if not os.path.exists("access_token.json"):
-            return jsonify({"error": "No access token. Please log in via /login"}), 401
+            return jsonify({"error": "No access token. Please login."}), 401
 
         with open("access_token.json", "r") as f:
             token_info = json.load(f)
 
-        access_token = token_info.get("access_token")
-        if not access_token:
-            return jsonify({"error": "Invalid access token"}), 401
+        if auth_manager.is_token_expired(token_info):
+            token_info = auth_manager.refresh_access_token(token_info["refresh_token"])
+            with open("access_token.json", "w") as f:
+                json.dump(token_info, f)
 
+        access_token = token_info["access_token"]
         sp = Spotify(auth=access_token)
 
-        data = request.json
-        track_uris = data.get("track_uris", [])
+        data = request.get_json()
+        print("Received data:", data)
+
+        # Accept both 'track_uris' or 'songs' keys
+        track_uris = data.get("track_uris") or data.get("songs") or []
         emotion = data.get("emotion", "My Moodboard")
 
         if not track_uris:
@@ -76,11 +80,16 @@ def create_playlist():
             public=True,
             description="Created using Music Moodboard ✨"
         )
+
         sp.playlist_add_items(playlist_id=playlist["id"], items=track_uris)
 
-        return jsonify({"url": playlist["external_urls"]["spotify"]})
+        return jsonify({
+            "success": True,
+            "playlist_url": playlist["external_urls"]["spotify"]
+        })
 
     except Exception as e:
+        print("Error during playlist creation:", str(e))
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
