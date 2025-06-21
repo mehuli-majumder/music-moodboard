@@ -1,61 +1,70 @@
 # flask_server.py
 
+from flask import Flask, request, redirect, session
+from spotipy import Spotify
+from spotipy.oauth2 import SpotifyOAuth
 import os
-from flask import Flask, request, redirect
 from dotenv import load_dotenv
-import spotipy.util as util
 
-# Load environment variables from .env file
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)  # Needed for session
 
-# Spotify credentials
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
 SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI")
 
-@app.route('/')
+auth_manager = SpotifyOAuth(
+    client_id=SPOTIFY_CLIENT_ID,
+    client_secret=SPOTIFY_CLIENT_SECRET,
+    redirect_uri=SPOTIFY_REDIRECT_URI,
+    scope="playlist-modify-public",
+    cache_path=".cache-web",  # Optional
+    show_dialog=True
+)
+
+@app.route("/")
 def home():
     return "🎵 Flask server is running and ready to handle Spotify redirects!"
 
-@app.route('/login')
+@app.route("/login")
 def login():
-    username = request.args.get("username")
-    if not username:
-        return "⚠️ Missing username in /login?username=... query param", 400
+    auth_url = auth_manager.get_authorize_url()
+    return redirect(auth_url)
 
-    scope = "playlist-modify-public"
-
-    try:
-        auth_url = util.prompt_for_user_token(
-            username=username,
-            scope=scope,
-            client_id=SPOTIFY_CLIENT_ID,
-            client_secret=SPOTIFY_CLIENT_SECRET,
-            redirect_uri=SPOTIFY_REDIRECT_URI,
-            show_dialog=True
-        )
-        print("Redirecting to Spotify:", auth_url)
-        return redirect(auth_url or "/error")
-
-    except Exception as e:
-        return f"❌ Error during Spotify login: {str(e)}", 500
-
-@app.route('/callback')
+@app.route("/callback")
 def callback():
-    code = request.args.get('code')
-    error = request.args.get('error')
-    
-    if error:
-        return f"Spotify Authorization failed: {error}"
-    
-    if not code:
-        return "No code provided."
+    code = request.args.get("code")
+    token_info = auth_manager.get_access_token(code, as_dict=True)
+    access_token = token_info["access_token"]
 
-    return "✅ Authorization complete. You can close this tab and return to the app."
+    # Store access token in session
+    session["access_token"] = access_token
+
+    return f"""
+    ✅ Authorization complete. You can close this tab and return to the app.
+    <script>
+        localStorage.setItem("spotify_token", "{access_token}");
+    </script>
+    """
+
+@app.route("/create_playlist", methods=["POST"])
+def create_playlist():
+    access_token = session.get("access_token")
+    if not access_token:
+        return {"error": "Not authenticated"}, 401
+
+    sp = Spotify(auth=access_token)
+    data = request.json
+    username = sp.me()["id"]
+    songs = data.get("tracks", [])
+
+    playlist = sp.user_playlist_create(user=username, name="My Music Moodboard 🎧", public=True)
+    sp.playlist_add_items(playlist_id=playlist["id"], items=songs)
+
+    return {"playlist_url": playlist["external_urls"]["spotify"]}
 
 if __name__ == "__main__":
-    # Render provides the port via an environment variable
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
