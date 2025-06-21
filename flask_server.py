@@ -36,6 +36,7 @@ def login():
             redirect_uri=SPOTIFY_REDIRECT_URI,
             show_dialog=True
         )
+        print("Redirecting to Spotify:", auth_url)
         return redirect(auth_url or "/error")
 
     except Exception as e:
@@ -43,7 +44,16 @@ def login():
 
 @app.route('/callback')
 def callback():
-    return "✅ Spotify authorization complete! You can close this tab and go back to the app."
+    code = request.args.get('code')
+    error = request.args.get('error')
+    
+    if error:
+        return f"Spotify Authorization failed: {error}"
+    
+    if not code:
+        return "No code provided."
+
+    return "✅ Authorization complete. You can close this tab and return to the app."
 
 if __name__ == "__main__":
     # Render provides the port via an environment variable
