@@ -1,10 +1,13 @@
 import streamlit as st
-from backend import detect_emotion, get_songs_by_emotion, create_spotify_playlist
+from backend import detect_emotion, get_songs_by_emotion
 import matplotlib.pyplot as plt
+import requests
+import webbrowser
+
+BACKEND_URL = "https://music-moodboard.onrender.com"
 
 st.set_page_config(page_title="Music Moodboard", layout="wide")
 
-# 🌸 Lilac background
 st.markdown("""
     <style>
     body {
@@ -19,13 +22,19 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Initial app state
+# States
 if "submitted" not in st.session_state:
     st.session_state["submitted"] = False
 if "show_playlist" not in st.session_state:
     st.session_state["show_playlist"] = False
+if "authorized" not in st.session_state:
+    st.session_state["authorized"] = False
+if "track_uris" not in st.session_state:
+    st.session_state["track_uris"] = []
+if "top_emotion" not in st.session_state:
+    st.session_state["top_emotion"] = ""
 
-# 🎤 Intro screen
+# Intro screen
 if not st.session_state["submitted"]:
     st.markdown('<p class="big-title">Want to create a playlist of your own?</p>', unsafe_allow_html=True)
     user_input = st.text_area("How are you feeling today?", height=200)
@@ -40,7 +49,7 @@ else:
     user_input = st.session_state["text"]
     language = st.session_state["language"]
 
-    # 🎭 Emotion detection only once
+    # Detect emotions
     if "emotion_scores" not in st.session_state:
         emotion_scores = detect_emotion(user_input)
         st.session_state["emotion_scores"] = emotion_scores
@@ -50,8 +59,8 @@ else:
     labels = [e['label'] for e in emotion_scores]
     scores = [round(e['score'] * 100, 2) for e in emotion_scores]
     top_emotion = labels[0]
+    st.session_state["top_emotion"] = top_emotion
 
-    # 🎯 Before showing playlist
     if not st.session_state["show_playlist"]:
         st.subheader("🎭 Detected Emotions (with confidence)")
         fig, ax = plt.subplots()
@@ -62,7 +71,6 @@ else:
             st.session_state["show_playlist"] = True
             st.rerun()
 
-    # 🎶 After user clicks to show playlist
     else:
         st.markdown(f"### ✨ Playlist for your **{top_emotion}** mood ✨")
         songs = get_songs_by_emotion(top_emotion, language=language)
@@ -75,21 +83,31 @@ else:
                 🎵 <a href="{song['url']}" target="_blank">Listen on Spotify</a>
             </div>
             """, unsafe_allow_html=True)
-
-            # Extract Spotify URI
             track_id = song['url'].split("/")[-1].split("?")[0]
             track_uris.append(f"spotify:track:{track_id}")
 
-        st.markdown("---")
-        username = st.text_input("Enter your Spotify username to save this playlist:")
+        st.session_state["track_uris"] = track_uris
 
-        if st.button("💾 Save this playlist to my Spotify"):
-            if username.strip() == "":
-                st.error("Please enter a valid Spotify username.")
-            else:
-                try:
-                    playlist_url = create_spotify_playlist(username, top_emotion, track_uris)
+        # Button to begin login flow
+        if not st.session_state["authorized"]:
+            if st.button("🔐 Authorize and Save to My Spotify"):
+                webbrowser.open(f"{BACKEND_URL}/login")
+                st.warning("After logging in and authorizing, please come back and click the 'Finish Saving Playlist' button.")
+        else:
+            st.success("✅ Authorized with Spotify.")
+
+        if st.button("💾 Finish Saving Playlist"):
+            try:
+                res = requests.post(f"{BACKEND_URL}/create_playlist", json={
+                    "emotion": st.session_state["top_emotion"],
+                    "track_uris": st.session_state["track_uris"]
+                })
+
+                if res.status_code == 200:
+                    playlist_url = res.json().get("url", "")
                     st.success("✅ Playlist created successfully!")
                     st.markdown(f"[🎧 Open Your Playlist Here]({playlist_url})")
-                except Exception as e:
-                    st.error(f"Something went wrong: {e}")
+                else:
+                    st.error("Failed to create playlist.")
+            except Exception as e:
+                st.error(f"Something went wrong: {e}")
