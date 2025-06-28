@@ -68,7 +68,7 @@ def create_playlist():
 
         # Accept both 'track_uris' or 'songs' keys
         track_uris = data.get("track_uris") or data.get("songs") or []
-        emotion = data.get("emotion", "My Moodboard")
+        playlist_name = data.get("emotion", "My Moodboard")
 
         if not track_uris:
             return jsonify({"error": "No tracks provided"}), 400
@@ -76,7 +76,7 @@ def create_playlist():
         user_id = sp.me()["id"]
         playlist = sp.user_playlist_create(
             user=user_id,
-            name=f"{emotion.title()} Vibes 🎧",
+            name=playlist_name,
             public=True,
             description="Created using Music Moodboard ✨"
         )

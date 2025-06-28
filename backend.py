@@ -32,18 +32,22 @@ def detect_emotion(text):
 
 # 🎵 Get songs based on emotion
 def get_songs_by_emotion(emotion, language="english", limit=10):
-    query = f"{emotion} mood {language}"
-    results = sp.search(q=query, type='track', limit=limit)
-    songs = []
+    lang_to_market = {"english": "US", "hindi": "IN", "bengali": "IN"}
+    market = lang_to_market.get(language.lower(), "US")
 
+    query = f"{emotion} mood"
+    results = sp.search(q=query, type='track', limit=limit, market=market)
+    
+    songs = []
     for item in results['tracks']['items']:
         songs.append({
             "name": item['name'],
             "artist": item['artists'][0]['name'],
             "url": item['external_urls']['spotify'],
-            "uri": item['uri']  # Needed to add to playlist
+            "uri": item['uri']
         })
     return songs
+
 
 # 💾 Create a Spotify playlist in the user's account
 def create_spotify_playlist(username, emotion, song_uris):

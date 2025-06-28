@@ -11,13 +11,38 @@ st.set_page_config(page_title="Music Moodboard", layout="wide")
 st.markdown("""
     <style>
     body {
-        background-color: #E6DAF3;
+        background: linear-gradient(120deg, #E6DAF3, #fdf0ff);
+        animation: backgroundMove 30s infinite alternate;
     }
+
+    @keyframes backgroundMove {
+        0% {background-position: 0% 50%;}
+        100% {background-position: 100% 50%;}
+    }
+
     .big-title {
-        font-size: 30px;
+        font-size: 32px;
         font-weight: bold;
         text-align: center;
-        color: #4B0082;
+        color: #6A0DAD;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% {transform: scale(1);}
+        50% {transform: scale(1.05);}
+        100% {transform: scale(1);}
+    }
+
+    button[kind="primary"] {
+        background-color: #BA55D3;
+        color: white;
+        border-radius: 10px;
+        padding: 10px 20px;
+    }
+
+    div[data-testid="stMarkdownContainer"] a:hover {
+        color: #8A2BE2;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -62,12 +87,12 @@ else:
     st.session_state["top_emotion"] = top_emotion
 
     if not st.session_state["show_playlist"]:
-        st.subheader("🎭 Detected Emotions (with confidence)")
+        st.subheader("🎝 Detected Emotions (with confidence)")
         fig, ax = plt.subplots()
         ax.barh(labels[::-1], scores[::-1], color="#BA55D3")
         st.pyplot(fig)
 
-        if st.button("🎧 Show me my vibe playlist!"):
+        if st.button("🎷 Show me my vibe playlist!"):
             st.session_state["show_playlist"] = True
             st.rerun()
 
@@ -88,7 +113,8 @@ else:
 
         st.session_state["track_uris"] = track_uris
 
-        # Button to begin login flow
+        playlist_name = st.text_input("📝 Name your playlist", value=f"{top_emotion.title()} Vibes 🎧")
+
         if not st.session_state["authorized"]:
             if st.button("🔐 Authorize and Save to My Spotify"):
                 webbrowser.open(f"{BACKEND_URL}/login")
@@ -96,25 +122,22 @@ else:
         else:
             st.success("✅ Authorized with Spotify.")
 
-        if st.button("💾 Finish Saving Playlist"):
+        if st.button("📎 Finish Saving Playlist"):
             try:
                 res = requests.post(
                     f"{BACKEND_URL}/create_playlist",
                     json={
-                        "emotion": st.session_state["top_emotion"],
+                        "emotion": playlist_name,
                         "track_uris": st.session_state["track_uris"]
                     },
                     timeout=15
                 )
 
                 if res.status_code == 200:
-                    playlist_url = res.json().get("url")
                     st.success("✅ Playlist created successfully!")
-                    st.markdown(f"[🎧 Open Your Playlist Here]({playlist_url})")
+                    st.info("Your playlist has been saved to your Spotify account!")
                 else:
                     error_detail = res.json().get("error", "No error info")
                     st.error(f"❌ Failed to create playlist: {error_detail}")
             except Exception as e:
                 st.error(f"Something went wrong: {str(e)}")
-
-
