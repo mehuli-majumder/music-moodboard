@@ -15,9 +15,17 @@ emotion_classifier = pipeline("text-classification",
                               return_all_scores=True)
 
 # Load credentials
-SPOTIFY_CLIENT_ID = st.secrets["SPOTIFY_CLIENT_ID"]
-SPOTIFY_CLIENT_SECRET = st.secrets["SPOTIFY_CLIENT_SECRET"]
-SPOTIFY_REDIRECT_URI = st.secrets["SPOTIFY_REDIRECT_URI"]  
+
+try:
+    import streamlit as st
+    SPOTIFY_CLIENT_ID = st.secrets["SPOTIFY_CLIENT_ID"]
+    SPOTIFY_CLIENT_SECRET = st.secrets["SPOTIFY_CLIENT_SECRET"]
+    SPOTIFY_REDIRECT_URI = st.secrets["SPOTIFY_REDIRECT_URI"]
+except:
+    SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
+    SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
+    SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI")
+  
 
 # Spotipy for searching songs (client credentials)
 auth_manager = SpotifyClientCredentials(client_id=SPOTIFY_CLIENT_ID,
