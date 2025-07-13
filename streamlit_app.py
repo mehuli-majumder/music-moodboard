@@ -22,7 +22,7 @@ st.markdown("""
     }
 
     .big-title {
-        font-size: 32px;
+        font-size: 42px;
         font-weight: bold;
         text-align: center;
         color: #6A0DAD;
