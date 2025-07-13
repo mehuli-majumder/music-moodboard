@@ -3,7 +3,9 @@ from backend import detect_emotion, get_songs_by_emotion
 import matplotlib.pyplot as plt
 import requests
 
-BACKEND_URL = "https://music-moodboard.onrender.com"
+# BACKEND_URL = "https://music-moodboard.onrender.com"
+
+BACKEND_URL = st.secrets["BACKEND_URL"]
 
 st.set_page_config(page_title="Music Moodboard", layout="wide")
 
