@@ -86,7 +86,7 @@ else:
     st.session_state["top_emotion"] = top_emotion
 
     if not st.session_state["show_playlist"]:
-        st.subheader("🎝 Detected Emotions (with confidence)")
+        st.subheader("🎝 Detected Emotions")
         fig, ax = plt.subplots()
         ax.barh(labels[::-1], scores[::-1], color="#BA55D3")
         st.pyplot(fig)
@@ -96,7 +96,7 @@ else:
             st.rerun()
 
     else:
-        st.markdown(f"### ✨ Playlist for your **{top_emotion}** mood ✨")
+        st.markdown(f"### ✨ MoodBoard ✨")
         songs = get_songs_by_emotion(top_emotion, language=language)
 
         track_uris = []
@@ -129,7 +129,7 @@ else:
                     playlist_url = res.json().get("playlist_url")
                     st.success("✅ Playlist created successfully!")
                     st.markdown(f"🎧 [Click here to open your playlist on Spotify]({playlist_url})")
-                    st.info("To keep this playlist, click '❤️ Save to Your Library' or '... → Add to Playlist' on Spotify.")
+                    st.info("🎵 Like your playlist? Just tap Add to Playlist on Spotify to keep it")
                 else:
                     error_detail = res.json().get("error", "No error info")
                     st.error(f"❌ Failed to create playlist: {error_detail}")
