@@ -129,7 +129,7 @@ else:
                     playlist_url = res.json().get("playlist_url")
                     st.success("✅ Playlist created successfully!")
                     st.markdown(f"🎧 [Click here to open your playlist on Spotify]({playlist_url})")
-                    st.info("🎵 Like your playlist? Just tap Add to Playlist on Spotify to keep it")
+                    st.info("🎵 Liked your playlist? Just tap Add to Playlist on Spotify to keep it")
                 else:
                     error_detail = res.json().get("error", "No error info")
                     st.error(f"❌ Failed to create playlist: {error_detail}")
