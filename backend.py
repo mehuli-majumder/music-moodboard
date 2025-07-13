@@ -26,6 +26,8 @@ except:
     SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
     SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI")
   
+print("🔍 SPOTIFY_CLIENT_ID:", repr(SPOTIFY_CLIENT_ID))
+print("🔍 SPOTIFY_CLIENT_SECRET:", repr(SPOTIFY_CLIENT_SECRET))
 
 # Spotipy for searching songs (client credentials)
 auth_manager = SpotifyClientCredentials(client_id=SPOTIFY_CLIENT_ID,
