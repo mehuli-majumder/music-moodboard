@@ -2,7 +2,6 @@ import streamlit as st
 from backend import detect_emotion, get_songs_by_emotion
 import matplotlib.pyplot as plt
 import requests
-import webbrowser
 
 BACKEND_URL = "https://music-moodboard.onrender.com"
 
@@ -52,8 +51,6 @@ if "submitted" not in st.session_state:
     st.session_state["submitted"] = False
 if "show_playlist" not in st.session_state:
     st.session_state["show_playlist"] = False
-if "authorized" not in st.session_state:
-    st.session_state["authorized"] = False
 if "track_uris" not in st.session_state:
     st.session_state["track_uris"] = []
 if "top_emotion" not in st.session_state:
@@ -115,14 +112,7 @@ else:
 
         playlist_name = st.text_input("📝 Name your playlist", value=f"{top_emotion.title()} Vibes 🎧")
 
-        if not st.session_state["authorized"]:
-            if st.button("🔐 Authorize and Save to My Spotify"):
-                webbrowser.open(f"{BACKEND_URL}/login")
-                st.warning("After logging in and authorizing, please come back and click the 'Finish Saving Playlist' button.")
-        else:
-            st.success("✅ Authorized with Spotify.")
-
-        if st.button("📎 Finish Saving Playlist"):
+        if st.button("📎 Generate Playlist Link"):
             try:
                 res = requests.post(
                     f"{BACKEND_URL}/create_playlist",
@@ -134,8 +124,10 @@ else:
                 )
 
                 if res.status_code == 200:
+                    playlist_url = res.json().get("playlist_url")
                     st.success("✅ Playlist created successfully!")
-                    st.info("Your playlist has been saved to your Spotify account!")
+                    st.markdown(f"🎧 [Click here to open your playlist on Spotify]({playlist_url})")
+                    st.info("To keep this playlist, click '❤️ Save to Your Library' or '... → Add to Playlist' on Spotify.")
                 else:
                     error_detail = res.json().get("error", "No error info")
                     st.error(f"❌ Failed to create playlist: {error_detail}")
