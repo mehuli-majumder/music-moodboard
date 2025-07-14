@@ -4,7 +4,9 @@ from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 import os
 import json
+import base64
 from dotenv import load_dotenv
+from pathlib import Path
 
 load_dotenv()
 
@@ -15,12 +17,17 @@ SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
 SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI")
 
+# Use local path (non-persistent) + fallback to encoded env token
+DISK_PATH = "."
+TOKEN_PATH = os.path.join(DISK_PATH, "access_token.json")
+CACHE_PATH = os.path.join(DISK_PATH, ".cache-web")
+
 auth_manager = SpotifyOAuth(
     client_id=SPOTIFY_CLIENT_ID,
     client_secret=SPOTIFY_CLIENT_SECRET,
     redirect_uri=SPOTIFY_REDIRECT_URI,
     scope="playlist-modify-public playlist-modify-private",
-    cache_path=".cache-web",
+    cache_path=CACHE_PATH,
     show_dialog=True
 )
 
@@ -41,23 +48,36 @@ def callback():
     if not token_info:
         return "❌ Failed to get token."
 
-    with open("access_token.json", "w") as f:
+    # Save token locally (optional short-term)
+    with open(TOKEN_PATH, "w") as f:
         json.dump(token_info, f)
+
+    # Print base64 token for storing in Render environment manually
+    encoded_token = base64.b64encode(json.dumps(token_info).encode()).decode()
+    print("\n\u2728 Add this to your Render ENV as SPOTIFY_TOKEN:\n")
+    print(encoded_token)
+    print("\n")
 
     return "✅ Authorization complete. You can close this tab."
 
 @app.route("/create_playlist", methods=["POST"])
 def create_playlist():
     try:
-        if not os.path.exists("access_token.json"):
-            return jsonify({"error": "No access token. Please login."}), 401
+        # Try loading from file
+        if os.path.exists(TOKEN_PATH):
+            with open(TOKEN_PATH, "r") as f:
+                token_info = json.load(f)
+        else:
+            # Fallback to Render ENV
+            encoded_token = os.getenv("SPOTIFY_TOKEN")
+            if not encoded_token:
+                return jsonify({"error": "No access token. Please login."}), 401
+            token_info = json.loads(base64.b64decode(encoded_token.encode()).decode())
 
-        with open("access_token.json", "r") as f:
-            token_info = json.load(f)
-
+        # Refresh if needed
         if auth_manager.is_token_expired(token_info):
             token_info = auth_manager.refresh_access_token(token_info["refresh_token"])
-            with open("access_token.json", "w") as f:
+            with open(TOKEN_PATH, "w") as f:
                 json.dump(token_info, f)
 
         access_token = token_info["access_token"]
@@ -66,7 +86,6 @@ def create_playlist():
         data = request.get_json()
         print("Received data:", data)
 
-        # Accept both 'track_uris' or 'songs' keys
         track_uris = data.get("track_uris") or data.get("songs") or []
         playlist_name = data.get("emotion", "My Moodboard")
 
