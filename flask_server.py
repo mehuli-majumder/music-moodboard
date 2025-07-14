@@ -7,8 +7,6 @@ import json
 import base64
 from dotenv import load_dotenv
 from pathlib import Path
-import sys  
-
 
 load_dotenv()
 
@@ -55,13 +53,11 @@ def callback():
         json.dump(token_info, f)
 
     # Print base64 token for storing in Render environment manually
-    encoded_token = base64.b64encode(json.dumps(token_info).encode()).decode()
-    
-
-    print("\n✨ Add this to your Render ENV as SPOTIFY_TOKEN:\n", flush=True)
-    print(encoded_token, flush=True)
-    print("\n", flush=True)
-
+    # Commented out after initial setup
+    # encoded_token = base64.b64encode(json.dumps(token_info).encode()).decode()
+    # print("\n✨ Add this to your Render ENV as SPOTIFY_TOKEN:\n", flush=True)
+    # print(encoded_token, flush=True)
+    # print("\n", flush=True)
 
     return "✅ Authorization complete. You can close this tab."
 
@@ -89,7 +85,7 @@ def create_playlist():
         sp = Spotify(auth=access_token)
 
         data = request.get_json()
-        print("Received data:", data)
+        # print("Received data:", data)  # Optional debug log
 
         track_uris = data.get("track_uris") or data.get("songs") or []
         playlist_name = data.get("emotion", "My Moodboard")
